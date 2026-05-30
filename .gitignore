@@ -1,0 +1,28 @@
+# 모델 가중치 (재생성 가능, 대용량)
+*.pt
+*.pth
+*.onnx
+fusion/artifacts/
+
+# 로컬 단일 진실원천 (gitignore — 별도 관리)
+MASTER_DECISION_LOG.md
+HANDOFF_*.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# 데이터 (대용량 — 외부 경로 참조)
+data/
+*.npy
+*.npz
+*.parquet
+
+# OS/IDE
+.DS_Store
+.vscode/
+.idea/

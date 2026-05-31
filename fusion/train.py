@@ -31,7 +31,7 @@ from fusion.dataset import make_loaders
 from fusion.model import ConcatMLP, GatedFusionModel, CrossModalAttentionFusion
 from fusion.schema import CLASS_NAMES, NUM_CLASSES
 
-DATA_DIR  = Path(os.environ.get("P2_DATA_DIR", "D:/WidU_multimodal_fusion")) / "synthetic"
+DATA_DIR  = Path(os.environ.get("P2_DATA_DIR", "data")) / "synthetic"
 CKPT_ROOT = Path(os.environ.get("P2_CKPT_DIR", str(ROOT / "fusion" / "artifacts" / "checkpoints")))
 DEVICE    = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

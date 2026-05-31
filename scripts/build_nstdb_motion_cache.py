@@ -11,32 +11,35 @@ motion confounder 목적:
   P1 reliability가 이미 모션을 플래그하므로 within-modality 거부 가능 confounder.
   (chronic·apnea는 cross-modal 맥락 필요 → 전혀 다른 실패 모드)
 
-사용:
-    cd D:/WidU_P2_B_Cross_Modal_Attention
-    D:/conda_envs/py39/python.exe scripts/build_nstdb_motion_cache.py
+사용 (레포 루트에서):
+    python scripts/build_nstdb_motion_cache.py
+    환경변수: P1_ROOT(P1 데이터·체크포인트 루트), P2_DATA_DIR(출력 데이터 루트)
 """
 from __future__ import annotations
 
 import math
 import os
 import sys
+from pathlib import Path
 
-sys.path.insert(0, r"D:\WidU_ecg-fm_emergency-detection_git\scripts")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import numpy as np
 import torch
 import torch.nn as nn
 from scipy.signal import find_peaks
 
-from multisnr import MultiSNRNoise
+from fusion.multisnr import MultiSNRNoise
 
-# ── 경로 ─────────────────────────────────────────────────────────────────────
-CKPT_FM   = r"D:\WidU_ecg-fm_emergency-detection\checkpoints\ecg-fm\mimic_iv_ecg_physionet_pretrained.pt"
-CKPT_P1   = r"D:\WidU_ecg-fm_emergency-detection\outputs\lora_multitask_snr_a07\lora_multitask_snr_best.pt"
-CKPT_GATE = r"D:\WidU_ecg-fm_emergency-detection\outputs\gate\gate_best.pt"
-DATA_DIR  = r"D:\WidU_ecg-fm_emergency-detection\data\processed\cpsc2018_mc"
-NSTDB_DIR = r"D:\WidU_ecg-fm_emergency-detection\data\raw\nstdb"
-OUT_PATH  = r"D:\WidU_multimodal_fusion\p1_cache\nstdb_motion.npz"
+# ── 경로 (환경변수 — 절대경로 미노출) ────────────────────────────────────────
+_P1   = os.environ.get("P1_ROOT", "../WidU_ecg-fm_emergency-detection")
+_DATA = os.environ.get("P2_DATA_DIR", "data")
+CKPT_FM   = os.path.join(_P1, "checkpoints", "ecg-fm", "mimic_iv_ecg_physionet_pretrained.pt")
+CKPT_P1   = os.path.join(_P1, "outputs", "lora_multitask_snr_a07", "lora_multitask_snr_best.pt")
+CKPT_GATE = os.path.join(_P1, "outputs", "gate", "gate_best.pt")
+DATA_DIR  = os.path.join(_P1, "data", "processed", "cpsc2018_mc")
+NSTDB_DIR = os.path.join(_P1, "data", "raw", "nstdb")
+OUT_PATH  = os.path.join(_DATA, "p1_cache", "nstdb_motion.npz")
 
 T_MASK  = 0.2155
 T_ALERT = 0.4753

@@ -5,7 +5,9 @@
 
   축1  confounder-FP (↓ 좋음): 실데이터 앵커 confounder(만성 ECG·모션·무호흡)에서
        '응급 오발화율'. benign이 진실인데 해당 응급 클래스로 예측 = false positive.
-       cross-modal attention의 존재이유 = 한 모달의 강한 오답을 맥락으로 거부.
+       (가설: cross-modal attention이 한 모달의 강한 오답을 맥락으로 거부. 이 축이 그 가설을
+        시험한다 — ECG 임베딩 용량 정합 시 proxy에선 아키텍처-비특이로 측정됨: attention-free
+        대조군이 동급 재현, confounder-FP는 융합 구조가 아니라 ECG 임베딩 용량의 readout.)
   축2  결측 강건성 (↑ 좋음): 모달리티를 하나씩 결측시켰을 때 clean 대비 macro-F1 유지.
 
 선험 우열 가정 금지 — 표로 판정한다.
@@ -109,9 +111,11 @@ def confounder_fp(model, conf_set, device, batch_size: int = 1024) -> Dict:
     """
     preds = predict_arrays(model, conf_set.arrays, device, batch_size=batch_size)
     em = conf_set.emergency_class
-    fp = float((preds == em).mean())
+    em_set = [em] if isinstance(em, (int, np.integer)) else list(em)   # int 또는 집합(임의 응급)
+    fp = float(np.isin(preds, em_set).mean())
     dist = {CLASS_NAMES[c]: int((preds == c).sum()) for c in range(NUM_CLASSES)}
-    return {"name": conf_set.name, "emergency_class": CLASS_NAMES[em],
+    em_name = "+".join(CLASS_NAMES[c] for c in em_set)
+    return {"name": conf_set.name, "emergency_class": em_name,
             "fp_rate": fp, "n": int(len(preds)), "pred_dist": dist}
 
 

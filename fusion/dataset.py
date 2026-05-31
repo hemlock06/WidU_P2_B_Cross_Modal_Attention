@@ -16,6 +16,7 @@
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -27,8 +28,8 @@ from fusion.schema import (EMB_DIM, IMU_DIM, IMU_FEATURES, MultimodalSample,
                            NUM_CLASSES, SPO2_DIM, SPO2_FEATURES)
 from fusion import priors as cp
 
-# 외부 데이터 경로 (코드 미복사 — 절대경로 참조). 환경변수로 재지정 가능.
-P1_CACHE_DIR = Path(r"D:\WidU_multimodal_fusion\p1_cache")
+# 외부 데이터 경로 (환경변수 P2_DATA_DIR로 지정, 기본 상대 "data" — 절대경로 미노출). 코드엔 미복사.
+P1_CACHE_DIR = Path(os.environ.get("P2_DATA_DIR", "data")) / "p1_cache"
 
 # 클래스별 ECG P1 캐시 소스 매핑 — 키: P2 클래스, 값: cpsc_mc label_mc 값 목록
 _ECG_SRC_LABELS: Dict[int, List[int]] = {

@@ -2,7 +2,8 @@
 
 목적(정직한 기대): 필드 전에 파이프라인을 끝까지 돌려 ① 배관 작동 ② 바닥값 ③ 구조 검증.
 산출 fusion_synth_v1.pt = 예행용·버림(비배포). 조건부 독립 proxy에선 attention ≈ concat/gated
-동급 예상 — 변별은 정확도가 아니라 confounder-FP·결측강건성·XAI에서 측정한다.
+동급 예상이며, confounder-FP·결측강건성도 ECG 임베딩 용량 정합 시 아키텍처-비특이로 측정됨
+(용량 readout). 실 변별은 시간정렬 실데이터(필드), 고유가치는 XAI로 한정된다.
 
 사용:
     python -m fusion.run_dryrun --epochs 60
@@ -42,7 +43,7 @@ from fusion.schema import CLASS_NAMES
 
 DEVICE    = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ARTIFACTS = ROOT / "fusion" / "artifacts"
-DATA_ROOT = Path(os.environ.get("P2_DATA_DIR", r"D:\WidU_multimodal_fusion"))
+DATA_ROOT = Path(os.environ.get("P2_DATA_DIR", "data"))
 
 MODEL_FACTORY = {
     "concat":     lambda: ConcatMLP(hidden_dims=(512, 256, 128), dropout_p=0.3),
@@ -186,8 +187,8 @@ def main():
             f.write("\n[attention XAI — cross_attn]\n" + xai_block + "\n")
         f.write("\n해석 지침 (예행 — 수치는 버린다):\n")
         f.write(" - clean 정확도는 proxy·미튜닝 베이스라인 기준이라 필드 전 우열 판정 불가.\n")
-        f.write(" - confounder-FP는 모달별 비대칭일 수 있다: 맥락 모달이 정상인 confounder(만성 ECG)는\n")
-        f.write("   attention이 해당 모달을 하향가중해 유리, 단일 알람 모달 fixation형(무호흡 SpO2↓)은 불리.\n")
+        f.write(" - confounder-FP 차이는 융합 아키텍처가 아니라 ECG 임베딩 용량의 readout이다(용량-정합 측정):\n")
+        f.write("   동일 임베딩 병목을 concat·gated에 주면 chronic-FP가 cross_attn 수준으로 수렴 → 아키텍처-비특이.\n")
         f.write(" - apnea류 joint('desat ∧ HR 비상승')는 조건부 독립 proxy에 부재 → 어느 모델도 학습 불가.\n")
         f.write("   이 축은 실 시간정렬 데이터(train_on_field.py) 필요성의 실측 근거다.\n")
 

@@ -70,7 +70,9 @@ python -m fusion.train --model cross_attn --epochs 80
 ```
 
 ECG 임베딩은 P1(ECG 검출기)의 mean-pool 768차원을 사용한다(재인코딩하지 않음). 대용량 외부
-데이터(P1 임베딩 캐시·IMU 캘리브레이션·raw 신호)는 절대경로로 참조하며 레포에 복사하지 않는다.
+데이터(P1 임베딩 캐시·IMU 캘리브레이션·raw 신호)는 레포에 복사하지 않고 **환경변수**로 참조한다 —
+`P2_DATA_DIR`(데이터 루트)·`P1_ROOT`(P1 데이터·체크포인트 루트). 미설정 시 상대경로
+(`data`, `../WidU_ecg-fm_emergency-detection`)가 기본이라 저장소엔 절대경로가 노출되지 않는다.
 
 ---
 
@@ -79,10 +81,32 @@ ECG 임베딩은 P1(ECG 검출기)의 mean-pool 768차원을 사용한다(재인
 proxy 드라이런 파이프라인이 작동한다 — 3 융합 구조 학습, 2D 평가, attention XAI, 산출물 저장까지
 끝까지 돈다. `fusion_synth_v1.pt`는 예행용·비배포(버림)이며 필드 모델이 아니다.
 
-드라이런의 목적은 배관 검증·바닥값·구조 검증이다. 정확도는 세 구조가 동급으로 나타나는 것이
-예상이며, 이는 응급 효능의 증명이 아니라 "조건부 독립 proxy에서는 attention의 joint 우위가
-부재"라는 구조적 사실의 실측이다. 실제 정확도 변별과 attention의 맥락 거부권은 시간 정렬된 실
-데이터(`train_on_field.py`)에서 fresh init으로 검증한다.
+드라이런의 목적은 배관 검증·바닥값·구조 검증이다.
+
+**측정 결과 (정직한 음성 결과).** 현 가용 데이터 전반 — 합성 proxy, 실 ECG+IMU 페어(PTT-PPG:
+운동 오경보 억제·정상 활동 분류), 운동관용 이상탐지(PPG-DaLiA의 ECG+IMU / ECG+PPG / 3모달, 3-seed)
+— 에서 cross-modal attention은 late-fusion 베이스라인을 견고하게 이기지 못했다. 정확도·confounder
+오경보율·결측 강건성이 모두 동급이며, 모델 간 차이는 융합 아키텍처가 아니라 ECG 임베딩 용량에서
+나온다(용량 정합 시 비특이). 이는 실패가 아니라 **비순환적으로 규명한 경계**다: 조건부 독립으로
+조립한 데이터에는 모달이 서로를 봐야만 풀리는 시간 정렬 joint가 부재해 attention이 게이팅으로
+퇴화한다. attention의 고유 가치(맥락 거부권)와 정확도 변별은 진짜 상보 joint를 담은 시간 정렬 실
+데이터(`train_on_field.py`)에서만 검증 가능하며, 그 판정은 필드 멀티모달 확보 후로 이월한다. 본
+트랙의 기여는 그 경계를 측정으로 명확히 한 것과 attention 가중치 기반 설명가능성(XAI)이다.
+
+---
+
+## 진행 단계
+
+- [x] 융합 패키지 (concat / gated / cross-modal attention 3변형)
+- [x] 실데이터 앵커 confounder (만성 ECG · 무호흡 SpO2 · 모션 ECG — 비순환)
+- [x] 2D 평가 (confounder 오경보율 × 결측 강건성)
+- [x] 용량-정합 분석 (confounder 오경보율 = ECG 임베딩 용량 readout, 아키텍처-비특이)
+- [x] attention XAI ([3,3] 가중치 추출)
+- [x] proxy 드라이런 (cross_attn val macro-F1 ~0.947 — 예행·비배포)
+- [x] 실 ECG+IMU 페어드 평가 (PTT-PPG: 운동 오경보 억제 + 정상 활동 분류)
+- [ ] attention 실(實)어텐션 추출 (forward hook — 현 근사 대체)
+- [ ] 시뮬레이터 joint 주입 실험 (positive control)
+- [ ] 실 시간정렬 데이터 학습형 융합 (필드 후, fresh init)
 
 ---
 

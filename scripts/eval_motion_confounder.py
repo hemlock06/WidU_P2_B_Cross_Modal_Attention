@@ -28,7 +28,7 @@ from fusion import xai
 
 DEVICE    = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 ARTIFACTS = ROOT / "fusion" / "artifacts"
-DATA_ROOT = Path(os.environ.get("P2_DATA_DIR", r"D:\WidU_multimodal_fusion"))
+DATA_ROOT = Path(os.environ.get("P2_DATA_DIR", "data"))
 CKPT_PATH = ARTIFACTS / "fusion_synth_v1.pt"
 
 MODEL_FACTORY = {

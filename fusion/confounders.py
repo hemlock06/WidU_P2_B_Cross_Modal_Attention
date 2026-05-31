@@ -29,9 +29,11 @@ import numpy as np
 from fusion.schema import (CARDIAC_PROB_NAMES, IMU_FEATURES, NUM_CARDIAC,
                            SPO2_FEATURES)
 
-P1_CACHE_DIR  = Path(r"D:\WidU_multimodal_fusion\p1_cache")
-IMU_CALIB     = Path(r"D:\WidU_multimodal_fusion\interim\imu_calibration.npz")
-UCDDB_DIR     = Path(r"D:\WidU_multimodal_fusion\raw") / "ucddb"
+# 외부 데이터 루트 (환경변수 P2_DATA_DIR로 지정, 기본은 상대경로 "data"). 절대경로 미노출.
+_DATA_ROOT    = Path(os.environ.get("P2_DATA_DIR", "data"))
+P1_CACHE_DIR  = _DATA_ROOT / "p1_cache"
+IMU_CALIB     = _DATA_ROOT / "interim" / "imu_calibration.npz"
+UCDDB_DIR     = _DATA_ROOT / "raw" / "ucddb"
 
 # P2 클래스 인덱스
 CARDIAC_CLASS, HYPOXIA_CLASS, NORMAL_CLASS = 2, 4, 0
@@ -266,6 +268,45 @@ def build_motion_confounder(seed: int = 0) -> ConfounderSet:
     return ConfounderSet(
         name="motion_ecg", arrays=arrays, emergency_class=CARDIAC_CLASS,
         realness=f"ECG=real NSTDB-noise@P1(n={n}); IMU=real sit; SpO2=normal-anchor",
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 실 페어드(ECG+IMU) 평가. ptt_ppg 운동: 유일 실 시간정렬쌍.
+# ─────────────────────────────────────────────────────────────────────────────
+PTT_P1_CACHE = P1_CACHE_DIR / "ptt_ppg_p1.npz"
+ACTIVE_CLASS = 1   # normal-active (운동, 진실=비응급)
+
+
+def build_exercise_confounder(seed: int = 0) -> ConfounderSet:
+    """실 ptt_ppg 운동(walk/run) ECG+IMU 동일인·시간정렬 페어 + 정상 SpO2 앵커.
+
+    운동은 ECG emergency_score↑(es̄~0.41)·reliability↑(모션)·HR↑를 유발 → 융합이 맥락
+    (활동 IMU·정상 SpO2·reliability)으로 응급 오발화(2/3/4)를 억제하는지 측정(진실=normal-active).
+    유일 실 ECG+IMU 정렬쌍이라 실 페어드 평가의 핵심. ECG는 CPSC 분포 정합 후 P1 추론(검증 게이트 통과).
+    """
+    if not PTT_P1_CACHE.exists():
+        raise NotImplementedError(
+            f"ptt P1 캐시 필요: {PTT_P1_CACHE} (scripts/build_ptt_ppg_p1_cache.py 먼저 실행)")
+    rng = np.random.default_rng(seed)
+    d = np.load(PTT_P1_CACHE)
+    c = {k: d[k] for k in d.files}
+    idx = np.where(c["label"] == ACTIVE_CLASS)[0]   # walk/run
+    n = len(idx)
+    arrays = {
+        "ecg_embedding": c["embedding"][idx].astype(np.float32),
+        "ecg_aux":       _ecg_aux_from_cache(c, idx),
+        "imu_feat":      c["imu_feat"][idx].astype(np.float32),   # 실 ptt IMU (동일 윈도우 페어)
+        "spo2_feat":     np.tile(_normal_spo2_feat(), (n, 1)),
+        "modality_mask": np.ones((n, 3), dtype=np.float32),
+    }
+    es_m = float(c["emergency_score"][idx].mean()); rel_m = float(c["reliability"][idx].mean())
+    return ConfounderSet(
+        name="exercise_pair", arrays=arrays,
+        emergency_class=(CARDIAC_CLASS, 3, HYPOXIA_CLASS),   # 임의 응급(2/3/4) 오발화
+        true_label=ACTIVE_CLASS,
+        realness=(f"ECG+IMU=real ptt_ppg walk/run pair(n={n}, es̄={es_m:.2f}, rel̄={rel_m:.2f}); "
+                  f"SpO2=normal-anchor"),
     )
 
 

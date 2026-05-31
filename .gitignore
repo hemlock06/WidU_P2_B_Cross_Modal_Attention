@@ -2,7 +2,8 @@
 *.pt
 *.pth
 *.onnx
-fusion/artifacts/
+fusion/artifacts/*
+!fusion/artifacts/.gitkeep
 
 # 로컬 단일 진실원천 (gitignore — 별도 관리)
 MASTER_DECISION_LOG.md
